@@ -6,6 +6,8 @@ import(
 	"github.com/gpmgo/gopm/modules/goconfig"
 	"strconv"
 	"time"
+	"./utils"
+	"fmt"
 )
 
 func main(){
@@ -17,20 +19,18 @@ func main(){
 	blogName, err := cfg.GetValue("CSDN", "blogName")
 	blogNum, err := cfg.GetValue("CSDN", "blogNum")
 	articlesUrl, err := cfg.GetValue("CSDN", "articleUrl")
-	times, err := cfg.GetValue("CSDN", "times")
-	retryTimes,_:=strconv.Atoi(times)
 	num,_:=strconv.Atoi(blogNum)
 	num = *flag.Int("num",num,"num of blog")
 
 	csdn:=webcrawler.NewCsdn()
-	data:=csdn.GetArticles(articlesUrl,num)
+	proxyUrl:=utils.GetIp()
+	data:=csdn.GetArticles(articlesUrl,num,proxyUrl)
 	//重试
-	for i:=0;data==nil&&i<retryTimes;i++{
-		data=csdn.GetArticles(articlesUrl,num)
-		if i==retryTimes&&data==nil{
-			return
-		}
+	for i:=0;data==nil;i++{
+		data=csdn.GetArticles(articlesUrl,num,proxyUrl)
 	}
+	fmt.Println("文章总数量:",len(data))
+	fmt.Println("文章链接:",data)
 	for{
 		go csdn.IncreaseVisits(blogName,data)
 		time.Sleep(time.Duration(30)*time.Second)

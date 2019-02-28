@@ -5,23 +5,15 @@ import (
 	"fmt"
 	"math/rand"
 	"math"
-	"encoding/json"
-	"strconv"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/garyburd/redigo/redis"
-	"log"
-	"os"
-	"strings"
 	"time"
 	"net/url"
+	"encoding/json"
+	"io/ioutil"
+	"strconv"
 )
 var (
 	rd = rand.New(rand.NewSource(math.MaxInt64))
-	xici = "http://www.xicidaili.com/wn/"
-)
-
-const(
-	PAGE  = 40
+	proxyServer="http://47.107.89.95:8090/get"
 )
 
 
@@ -48,43 +40,19 @@ func RandomIP() string {
 	return fmt.Sprintf("%d.%d.%d.%d", rd.Intn(255), rd.Intn(255), rd.Intn(255), rd.Intn(255))
 }
 
-func getIp(ip string){
-	var count int
-	for i := 1; i <= PAGE; i++ {
-		response := GetRep(xici + strconv.Itoa(i),ip)
-		if response.StatusCode == 200 {
-			dom, err := goquery.NewDocumentFromReader(response.Body)
-			if err != nil {
-				log.Println("失败原因:", response.StatusCode)
-			}
-			dom.Find("#ip_list tbody tr").Each(func(i int, context *goquery.Selection) {
-				ipInfo := make(map[string][]string)
-				//地址
-				ip := context.Find("td").Eq(1).Text()
-				//端口
-				port := context.Find("td").Eq(2).Text()
-				//地址
-				address := context.Find("td").Eq(3).Find("a").Text()
-				//匿名
-				anonymous := context.Find("td").Eq(4).Text()
-				//协议
-				protocol := context.Find("td").Eq(5).Text()
-				//存活时间
-				survivalTime := context.Find("td").Eq(8).Text()
-				//验证时间
-				checkTime := context.Find("td").Eq(9).Text()
-				ipInfo[ip] = append(ipInfo[ip], ip, port, address, anonymous, protocol, survivalTime, checkTime)
-				fmt.Println(ipInfo)
-				hBody, _ := json.Marshal(ipInfo[ip])
-
-				//存入redis
-				saveRedis(ip+":"+port,string(hBody))
-				fmt.Println(ipInfo)
-				count++
-			})
-		}
+func GetIp() string{
+	proxyMap:=make(map[string]interface{})
+	res,_:=http.Get(proxyServer)
+	body,err:=ioutil.ReadAll(res.Body)
+	if err !=nil{
+		return ""
 	}
-
+	fmt.Println(string(body))
+	json.Unmarshal([]byte(string(body)),&proxyMap)
+	port:=proxyMap["port"].(float64)
+	ip:=(proxyMap["ip"]).(string)
+	proxyUrl:="http://"+ip+":"+strconv.Itoa(int(port))
+	return proxyUrl
 }
 /**
 * 返回response
@@ -99,9 +67,8 @@ func GetRep(urls string,ip string) *http.Response {
 	proxy, err := url.Parse(ip)
 	//设置超时时间
 	timeout := time.Duration(20* time.Second)
-	fmt.Printf("使用代理:%s\n",proxy)
 	client := &http.Client{}
-	if ip != "local"{
+	if ip != "localhost"{
 		client = &http.Client{
 			Transport: &http.Transport{
 				Proxy: http.ProxyURL(proxy),
@@ -111,8 +78,8 @@ func GetRep(urls string,ip string) *http.Response {
 	}
 	response, err := client.Do(request)
 	if err != nil || response.StatusCode != 200{
-		fmt.Printf("line-99:遇到了错误-并切换ip %s\n",err)
-		getIp(ReturnIp())
+		fmt.Println("请求遇到了错误",err.Error())
+		return nil
 	}
 	return response
 }
@@ -138,43 +105,4 @@ func GetAgent() string {
 }
 
 
-func saveRedis(ip string,hBody string){
-	c, err := redis.Dial("tcp", "47.107.89.95:6379")
-	if err != nil {
-		fmt.Println("Connect to redis error", err)
-		return
-	}
-	defer c.Close()
-	//键值对的方式存入hash
-	_, err = c.Do("HSET", "ippool", ip, string(hBody))
-	//将ip:port 存入set  方便返回随机的ip
-	_,err  = c.Do("SADD","ippoolkey",ip)
-	if err != nil {
-		log.Fatalf("err:%s", err)
-		os.Exit(1)
-	}
-}
 
-
-/**
-* 随机返回一个IP
-*/
-func ReturnIp() string{
-	c, err := redis.Dial("tcp", "47.107.89.95:6379")
-	if err != nil {
-		fmt.Println("Connect to redis error", err)
-		os.Exit(0)
-	}
-	defer c.Close()
-	key,err:=redis.String(c.Do("SRANDMEMBER", "ippoolkey"))
-	res,err:=redis.String(c.Do("HGET", "ippool",key))
-	res=strings.TrimLeft(res, "[")
-	res=strings.TrimRight(res, "]")
-	array := strings.Split(res,",")
-
-	for i:=0;i<len(array);i++{
-		array[i] = strings.Trim(array[i],"\"")
-	}
-	host:= strings.ToLower(array[4])+"://"+array[0]+":"+array[1]
-	return host
-}

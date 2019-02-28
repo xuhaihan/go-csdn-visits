@@ -4,14 +4,12 @@ import (
 	"github.com/axgle/mahonia"
 	"github.com/PuerkitoBio/goquery"
 	"strconv"
-	"fmt"
 	"../utils"
-	"io/ioutil"
 )
 
 type Crawler interface {
 	IncreaseVisits(blog string, data []string)
-	GetArticles(url string, num int) []string
+	GetArticles(url string, num int, proxyUrl string) []string
 }
 
 func NewCsdn() Crawler {
@@ -25,20 +23,13 @@ func (c *csdn) IncreaseVisits(blog string, data []string) {
 	if data == nil {
 		return
 	}
-	/*header:=make(map[string]string)
-	header["Referer"]="https://blog.csdn.net/"+blog
-	header["User-Agent"]="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
-	*/
-	ip := utils.ReturnIp()
+	ip := utils.GetIp()
 	for _, value := range data {
-		res := utils.GetRep(value, ip)
-		if res.StatusCode != 200 {
-			fmt.Println(res.StatusCode)
-		}
+		utils.GetRep(value, ip)
 	}
 }
 
-func (*csdn) GetArticles(url string, num int) []string {
+func (*csdn) GetArticles(url string, num int, proxyUrl string) []string {
 	var i int
 	var data []string
 	if num < 0 {
@@ -46,11 +37,14 @@ func (*csdn) GetArticles(url string, num int) []string {
 	}
 	for i = 1; i <= num; i++ {
 		newUrl := url + strconv.Itoa(i)
-		//res,_:=http.Get(newUrl)
-		ip := utils.ReturnIp()
-		res := utils.GetRep(newUrl, ip)
-		body, _ := ioutil.ReadAll(res.Body)
-		fmt.Println(string(body))
+		res := utils.GetRep(newUrl, proxyUrl)
+		//res,_:= http.Get(newUrl)
+		//body, _ := ioutil.ReadAll(res.Body)
+		//fmt.Println(string(body))
+		if res == nil {
+			proxyUrl = utils.GetIp()
+			continue
+		}
 		dec := mahonia.NewDecoder("utf-8")
 		doc := dec.NewReader(res.Body)
 		result, _ := goquery.NewDocumentFromReader(doc)
