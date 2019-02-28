@@ -13,7 +13,8 @@ import (
 )
 var (
 	rd = rand.New(rand.NewSource(math.MaxInt64))
-	proxyServer="http://47.107.89.95:8090/get"
+	//proxyServer="http://47.107.89.95:8090/get"
+	proxyServer="http://172.17.19.7:8090/get"
 )
 
 
