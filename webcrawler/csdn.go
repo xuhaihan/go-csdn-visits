@@ -5,7 +5,6 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"strconv"
 	"../utils"
-	"net/http"
 )
 
 type Crawler interface {
@@ -38,8 +37,8 @@ func (*csdn) GetArticles(url string, num int, proxyUrl string) []string {
 	}
 	for i = 1; i <= num; i++ {
 		newUrl := url + strconv.Itoa(i)
-		//res := utils.GetRep(newUrl, proxyUrl)
-		res,_:= http.Get(newUrl)
+		res := utils.GetRep(newUrl, proxyUrl)
+		//res,_:= http.Get(newUrl)
 		//body, _ := ioutil.ReadAll(res.Body)
 		//fmt.Println(string(body))
 		if res == nil {
