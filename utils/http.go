@@ -13,8 +13,8 @@ import (
 )
 var (
 	rd = rand.New(rand.NewSource(math.MaxInt64))
-	//proxyServer="http://47.107.89.95:8090/get"
-	proxyServer="http://172.17.19.7:8090/get"
+	proxyServer="http://47.107.89.95:8090/get"
+	//proxyServer="http://172.17.19.7:8090/get"
 )
 
 
@@ -79,7 +79,7 @@ func GetRep(urls string,ip string) *http.Response {
 	}
 	response, err := client.Do(request)
 	if err != nil || response.StatusCode != 200{
-		fmt.Println("请求遇到了错误",err.Error())
+		//fmt.Println("请求遇到了错误",err.Error())
 		return nil
 	}
 	return response
