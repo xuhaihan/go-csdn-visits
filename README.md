@@ -8,7 +8,7 @@ golang 编写的csdn刷量脚本
    
    在启动这个服务之前，需要启动一个ip代理池服务，这个项目通过接口调用该服务，获取代理，这个代理安装参看这个连接
   ```
-     
+        https://github.com/xuhaihan/proxy 
   ```
    
 
